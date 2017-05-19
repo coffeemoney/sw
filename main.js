@@ -1,27 +1,30 @@
-var http = require('http'),
-    net = require('net'),
-    httpProxy = require('http-proxy'),
-    url = require('url'),
-    util = require('util');
+var http = require('http');
 
-var proxy = httpProxy.createServer();
+http.createServer(onRequest).listen(3000);
 
-var server = http.createServer(function (req, res) {
-  util.puts('Receiving reverse proxy request for:' + req.url);
+function onRequest(client_req, client_res) {
+  
+  console.log("handling :" + client_req.url);
+  
+  console.log(client_req.headers);
+  
+	var options = {
+		hostname: client_req.headers.host,
+		port: 80,
+		path: client_req.url,
+		method: client_req.method,
+		headers: client_req.headers
+	};
+	
+	delete options.headers['accept-encoding'];
 
-  proxy.web(req, res, {target: req.url, secure: false});
-}).listen(8080);
-
-server.on('connect', function (req, socket) {
-  util.puts('Receiving reverse proxy request for:' + req.url);
-
-  var serverUrl = url.parse('https://' + req.url);
-
-  var srvSocket = net.connect(serverUrl.port, serverUrl.hostname, function() {
-    socket.write('HTTP/1.1 200 Connection Established\r\n' +
-    'Proxy-agent: Node-Proxy\r\n' +
-    '\r\n');
-    srvSocket.pipe(socket);
-    socket.pipe(srvSocket);
+  var proxy = http.request(options, function (res) {
+    res.pipe(client_res, {
+      end: true
+    });
   });
-});
+
+  client_req.pipe(proxy, {
+    end: true
+  });
+}
