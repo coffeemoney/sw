@@ -1,30 +1,15 @@
-var http = require('http');
+var http = require('http'),
+    httpProxy = require('http-proxy');
+//
+// Create your proxy server and set the target in the options.
+//
+httpProxy.createProxyServer({target:'http://localhost:9000'}).listen(8080); // See (†)
 
-http.createServer(onRequest).listen(8080);
-
-function onRequest(client_req, client_res) {
-  
-  console.log("handling :" + client_req.url);
-  
-  console.log(client_req.headers);
-  
-	var options = {
-		hostname: client_req.headers.host,
-		port: 80,
-		path: client_req.url,
-		method: client_req.method,
-		headers: client_req.headers
-	};
-	
-	delete options.headers['accept-encoding'];
-
-  var proxy = http.request(options, function (res) {
-    res.pipe(client_res, {
-      end: true
-    });
-  });
-
-  client_req.pipe(proxy, {
-    end: true
-  });
-}
+//
+// Create your target server
+//
+http.createServer(function (req, res) {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.write('request successfully proxied!' + '\n' + JSON.stringify(req.headers, true, 2));
+  res.end();
+}).listen(9000);
